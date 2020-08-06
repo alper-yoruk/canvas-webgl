@@ -1,6 +1,8 @@
 const canvasSketch = require("canvas-sketch");
 const random = require("canvas-sketch-util/random");
-
+const palettes = require("nice-color-palettes");
+const eases = require("eases");
+const BezierEasing = require("bezier-easing");
 // Ensure ThreeJS is in global scope for the 'examples/'
 global.THREE = require("three");
 
@@ -8,6 +10,9 @@ global.THREE = require("three");
 require("three/examples/js/controls/OrbitControls");
 
 const settings = {
+  dimensions: [512, 512],
+  fps: 24,
+  duration: 4,
   // Make the loop animated
   animate: true,
   // Get a WebGL canvas rather than 2D
@@ -21,9 +26,10 @@ const sketch = ({ context }) => {
   const renderer = new THREE.WebGLRenderer({
     canvas: context.canvas,
   });
+  const palette = random.pick(palettes);
 
   // WebGL background color
-  renderer.setClearColor("hsl(0, 0%, 95%)", 1);
+  renderer.setClearColor(palette[1], 1);
 
   // Setup a camera, we will update its settings on resize
   const camera = new THREE.OrthographicCamera();
@@ -32,11 +38,11 @@ const sketch = ({ context }) => {
   const scene = new THREE.Scene();
 
   const box = new THREE.BoxGeometry(1, 1, 1);
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 30; i++) {
     const mesh = new THREE.Mesh(
       box,
       new THREE.MeshBasicMaterial({
-        color: "green",
+        color: random.pick(palette),
       })
     );
     mesh.position.set(
@@ -44,9 +50,23 @@ const sketch = ({ context }) => {
       random.range(-1, 1),
       random.range(-1, 1)
     );
-    mesh.scale.multiplyScalar(0.1);
+    mesh.scale.set(
+      random.range(-1, 1),
+      random.range(-1, 1),
+      random.range(-1, 1)
+    );
+    mesh.scale.multiplyScalar(0.25);
     scene.add(mesh);
   }
+
+  scene.add(new THREE.AmbientLight("hsl(1, 10%, 50%)"));
+
+  const light = new THREE.DirectionalLight("white", 1);
+  light.position.set(0, 4, 0);
+  scene.add(light);
+
+  const easeFn = BezierEasing(0.81, 0.25, 0.69, 0.78);
+
   // draw each frame
   return {
     // Handle resize events here
@@ -76,7 +96,9 @@ const sketch = ({ context }) => {
       camera.updateProjectionMatrix();
     },
     // Update & render your scene here
-    render({ time }) {
+    render({ playhead }) {
+      const t = Math.sin(playhead * Math.PI * 2);
+      scene.rotation.z = easeFn(t);
       renderer.render(scene, camera);
     },
     // Dispose of events & renderer for cleaner hot-reloading
